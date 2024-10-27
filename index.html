@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Solver</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Bootstrap CSS library -->
+    <link rel="stylesheet" type="text/css" href="lib/bootstrap-5.0.2-dist/css/bootstrap.min.css">
+
+    <!-- JavaScript library -->
+    <script src="lib/bootstrap-5.0.2-dist/js/bootstrap.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <!-- DevExtreme theme -->
+    <link rel="stylesheet" href="lib/DevExtreme/css/dx.material.blue.light.css">
+
+
+</head>
+
+<body>
+    <nav>
+        <div class="container">
+            <div class="navigation-left">
+                <h3>Sudoku Solver</h3>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-12 text-center">
+                <table id="sudokuTable" class="text-center mx-auto my-3">
+                    <tbody></tbody>
+                </table>
+                <button id="solve" type="button" class="btn btn-lg btn text-center">Solve</button>
+                <button id="refresh" type="button" class="btn btn-lg"><i class="fas fa-sync-alt"></i></button>
+            </div>
+            <div class="col-md-12 my-5">
+                <h2>History</h2>
+                <div id="historyGrid"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- jQuery library -->
+    <script type="text/javascript" src="lib/DevExtreme/js/jquery.min.js"></script>
+    <!-- DevExtreme library -->
+    <script type="text/javascript" src="lib/DevExtreme/js/dx.all.js"></script>
+
+    <script type="text/javascript" src="js/SudokuSolver.js"></script>
+
+    <script>
+        $(() => {
+            let historyGrid;
+            const API_DOMAIN = "https://localhost:7070";
+            const sudokuTableBody = $('#sudokuTable tbody');
+
+            // Initialize inputs
+            for (let i = 0; i < 9; i++) {
+                const row = $('<tr></tr>');
+                for (let j = 0; j < 9; j++) {
+                    const cell = $('<td></td>');
+                    const input = $('<input type="number" min="1" max="9"/>');
+
+                    // Restrict input
+                    input.on('input', function () {
+                        this.value = this.value.replace('.', ''); // Remove "." character
+
+                        if (this.value.length > 1) {
+                            this.value = this.value.slice(0, 1); // Only allow one digit
+                        }
+
+                        if (this.value == 0) { // Remove number 0
+                            this.value = '';
+                        }
+
+                        checkDuplicate();
+
+                    });
+
+                    cell.append(input);
+                    row.append(cell);
+                }
+                sudokuTableBody.append(row);
+            }
+
+            $('#solve').on('click', function () {
+                const inputValues = getInputValues();
+                if (!checkDuplicate()) {
+                    if (solveSudoku(inputValues)) {
+                        DevExpress.ui.notify('Sudoku Solved Successfully!', 'success', 2000);
+                        const stringResult = printResult(inputValues);
+                        saveHistory(stringResult);
+                    } else {
+                        DevExpress.ui.notify('This Sudoku puzzle cannot be solved. Please check your inputs and try again.', 'error', 3000);
+                    }
+                } else {
+                    DevExpress.ui.notify('This Sudoku puzzle cannot be solved. Please check your inputs and try again.', 'error', 3000);
+                }
+
+            });
+
+            // Clear all values and errors
+            $('#refresh').on('click', function () {
+                $('#sudokuTable input').val('');
+                $('#sudokuTable input').removeClass('error');
+            });
+
+            // Get solved Sudoku data
+            let dataSource = {
+                load: function () {
+                    var items = $.Deferred();
+                    $.ajax({
+                        type: "GET",
+                        url: `${API_DOMAIN}/api/SudokuHistories`,
+                        success: function (result) {
+                            items.resolve(result);
+                        },
+                        error: function (xhr, status, error) {
+                            items.resolve([]);
+                        }
+                    });
+
+                    return items.promise();
+                }
+            };
+
+
+            // Initialize dxDataGrid
+            historyGrid = $('#historyGrid').dxDataGrid({
+                dataSource: dataSource,
+                columns: [
+                    {
+                        caption: "No.",
+                        alignment: 'center',
+                        cellTemplate: function (cellElement, cellInfo) {
+                            cellElement.text((cellInfo.row.rowIndex + 1) + (cellInfo.component.pageIndex()) * cellInfo.component.option("paging.pageSize"));
+                        }
+                    }, {
+                        dataField: "result",
+                        alignment: 'center',
+                    }, {
+                        dataField: "solvedDate",
+                        alignment: 'center',
+                        format: 'yyyy-MM-dd HH:mm:ss',
+                        dataType: 'date',
+                    }
+                ],
+                filterRow: {
+                    visible: true,
+                },
+                rowAlternationEnabled: true,
+                showRowLines: true,
+                showColumnLines: true,
+                showBorders: true,
+                columnAutoWidth: true,
+                allowColumnResizing: true,
+                paging: {
+                    pageSize: 10
+                },
+                pager: {
+                    showInfo: true,
+                    showPageSizeSelector: true,
+                    allowedPageSizes: [5, 10, 20]
+                }
+            }).dxDataGrid('instance');
+
+            // Convert input values to 2D array
+            function getInputValues() {
+                const values = [];
+                const inputs = $('#sudokuTable input');
+
+                for (let i = 0; i < 9; i++) {
+                    values[i] = [];
+                    for (let j = 0; j < 9; j++) {
+                        const value = inputs[i * 9 + j].value;
+                        values[i][j] = value ? parseInt(value, 10) : 0;
+                    }
+                }
+
+                return values;
+            }
+
+            // Check if the inputs are duplicates according to Sudoku rules
+            function checkDuplicate() {
+                // Remove error class
+                $('#sudokuTable input').removeClass('error');
+                let isDuplicate = false;
+
+                // Check all rows
+                for (let row = 0; row < 9; row++) {
+                    const values = {};
+                    const duplicateValues = [];
+                    for (let col = 0; col < 9; col++) {
+                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                        if (value) {
+                            if (values[value]) {
+                                duplicateValues.push(value);
+                                isDuplicate = true;
+                            }
+                            values[value] = true;
+                        }
+                    }
+
+                    // Warning for duplicate values
+                    for (let col = 0; col < 9; col++) {
+                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                        if (value && duplicateValues.includes(value)) {
+                            $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                        }
+                    }
+                }
+
+                // Check all colums
+                for (let col = 0; col < 9; col++) {
+                    const values = {};
+                    const duplicateValues = [];
+                    for (let row = 0; row < 9; row++) {
+                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                        if (value) {
+                            if (values[value]) {
+                                duplicateValues.push(value);
+                                isDuplicate = true;
+                            }
+                            values[value] = true;
+                        }
+                    }
+
+                    // Warning for duplicate values
+                    for (let row = 0; row < 9; row++) {
+                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                        if (value && duplicateValues.includes(value)) {
+                            $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                        }
+                    }
+                }
+
+                // Check all 3x3 boxes              
+                for (let boxRow = 0; boxRow < 3; boxRow++) {
+                    for (let boxCol = 0; boxCol < 3; boxCol++) {
+                        const values = {};
+                        const duplicateValues = [];
+                        for (let row = 0; row < 3; row++) {
+                            for (let col = 0; col < 3; col++) {
+                                const value = $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).val();
+                                if (value) {
+                                    if (values[value]) {
+                                        duplicateValues.push(value);
+                                        isDuplicate = true;
+                                    }
+                                    values[value] = true;
+                                }
+                            }
+                        }
+
+                        // Warning for duplicate values
+                        for (let row = 0; row < 3; row++) {
+                            for (let col = 0; col < 3; col++) {
+                                const value = $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).val();
+                                if (value && duplicateValues.includes(value)) {
+                                    $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).addClass('error');
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return isDuplicate;
+            }
+
+            // print result on inputs and return value as a string
+            function printResult(values) {
+                const inputs = $('#sudokuTable input');
+                let resultString = '';
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        inputs[i * 9 + j].value = values[i][j];
+                        resultString += values[i][j].toString();
+                    }
+                }
+
+                return resultString;
+            }
+
+            // Save solved Sudoku
+            function saveHistory(result) {
+                const data = {
+                    result: result
+                };
+
+                $.ajax({
+                    url: `${API_DOMAIN}/api/SudokuHistories`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+
+                    success: function (response) {
+                        historyGrid.refresh();
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
