@@ -90,7 +90,7 @@
                 sudokuTableBody.append(row);
             }
 
-            $('#solve').on('click', function () {               
+            $('#solve').on('click', function () {
                 if (!checkDuplicate()) {
                     const inputValues = getInputValues();
                     if (solveSudoku(inputValues)) {
@@ -111,30 +111,27 @@
                 $('#sudokuTable input').val('');
                 $('#sudokuTable input').removeClass('error');
             });
-
-            // Get solved Sudoku data
-            let dataSource = {
-                load: function () {
-                    var items = $.Deferred();
-                    $.ajax({
-                        type: "GET",
-                        url: `${API_DOMAIN}/api/SudokuHistories`,
-                        success: function (result) {
-                            items.resolve(result);
-                        },
-                        error: function (xhr, status, error) {
-                            items.resolve([]);
-                        }
-                    });
-
-                    return items.promise();
-                }
-            };
-
-
+           
             // Initialize dxDataGrid
             historyGrid = $('#historyGrid').dxDataGrid({
-                dataSource: dataSource,
+                dataSource: {
+                    // Get solved Sudoku data
+                    load: function () {
+                        var items = $.Deferred();
+                        $.ajax({
+                            type: "GET",
+                            url: `${API_DOMAIN}/api/SudokuHistories`,
+                            success: function (result) {
+                                items.resolve(result);
+                            },
+                            error: function (xhr, status, error) {
+                                items.rejected();
+                            }
+                        });
+
+                        return items.promise();
+                    }
+                },
                 columns: [
                     {
                         caption: "No.",
