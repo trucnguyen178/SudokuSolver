@@ -90,9 +90,9 @@
                 sudokuTableBody.append(row);
             }
 
-            $('#solve').on('click', function () {
-                const inputValues = getInputValues();
+            $('#solve').on('click', function () {               
                 if (!checkDuplicate()) {
+                    const inputValues = getInputValues();
                     if (solveSudoku(inputValues)) {
                         DevExpress.ui.notify('Sudoku Solved Successfully!', 'success', 2000);
                         const stringResult = printResult(inputValues);
