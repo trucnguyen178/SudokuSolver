@@ -202,19 +202,22 @@
                         if (value) {
                             if (values[value]) {
                                 duplicateValues.push(value);
-                                isDuplicate = true;
                             }
                             values[value] = true;
                         }
                     }
 
                     // Warning for duplicate values
-                    for (let col = 0; col < 9; col++) {
-                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
-                        if (value && duplicateValues.includes(value)) {
-                            $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                    if (duplicateValues.length > 0) {
+                        isDuplicate = true;
+                        for (let col = 0; col < 9; col++) {
+                            const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                            if (value && duplicateValues.includes(value)) {
+                                $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                            }
                         }
                     }
+
                 }
 
                 // Check all colums
@@ -226,17 +229,19 @@
                         if (value) {
                             if (values[value]) {
                                 duplicateValues.push(value);
-                                isDuplicate = true;
                             }
                             values[value] = true;
                         }
                     }
 
                     // Warning for duplicate values
-                    for (let row = 0; row < 9; row++) {
-                        const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
-                        if (value && duplicateValues.includes(value)) {
-                            $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                    if (duplicateValues.length > 0) {
+                        isDuplicate = true;
+                        for (let row = 0; row < 9; row++) {
+                            const value = $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).val();
+                            if (value && duplicateValues.includes(value)) {
+                                $(`#sudokuTable tr:eq(${row}) input:eq(${col})`).addClass("error");
+                            }
                         }
                     }
                 }
@@ -252,7 +257,6 @@
                                 if (value) {
                                     if (values[value]) {
                                         duplicateValues.push(value);
-                                        isDuplicate = true;
                                     }
                                     values[value] = true;
                                 }
@@ -260,11 +264,14 @@
                         }
 
                         // Warning for duplicate values
-                        for (let row = 0; row < 3; row++) {
-                            for (let col = 0; col < 3; col++) {
-                                const value = $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).val();
-                                if (value && duplicateValues.includes(value)) {
-                                    $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).addClass('error');
+                        if (duplicateValues.length > 0) {
+                            isDuplicate = true;
+                            for (let row = 0; row < 3; row++) {
+                                for (let col = 0; col < 3; col++) {
+                                    const value = $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).val();
+                                    if (value && duplicateValues.includes(value)) {
+                                        $(`#sudokuTable tr:eq(${boxRow * 3 + row}) input:eq(${boxCol * 3 + col})`).addClass('error');
+                                    }
                                 }
                             }
                         }
