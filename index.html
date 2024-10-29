@@ -125,7 +125,7 @@
                                 items.resolve(result);
                             },
                             error: function (xhr, status, error) {
-                                items.rejected();
+                                items.resolve([]);
                             }
                         });
 
